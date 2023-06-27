@@ -1,5 +1,4 @@
 const Header = (props) => {
-    console.log(props)
     return (
         <div>
             <h1>
@@ -10,7 +9,6 @@ const Header = (props) => {
 }
 
 const Content = (props) => {
-    console.log(props)
     return (
         <div>
             <Part part={props.parts[0]} />
