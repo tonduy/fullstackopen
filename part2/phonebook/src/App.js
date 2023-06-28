@@ -2,7 +2,7 @@ import {useEffect, useState} from 'react'
 import Filter from "./components/Filter";
 import PersonForm from "./components/PersonForm";
 import Persons from "./components/Persons";
-import axios from "axios";
+import personService from "./services/personService";
 
 const App = () => {
     const [persons, setPersons] = useState([])
@@ -12,8 +12,8 @@ const App = () => {
     const [newFilter, setNewFilter] = useState('')
 
     const hook = () => {
-        axios.get('http://localhost:3001/persons').then(response => {
-            setPersons(response.data)
+        personService.getAll().then(persons => {
+            setPersons(persons)
         })
     }
 
@@ -35,13 +35,32 @@ const App = () => {
         }
 
         if (checkIfNameExists(newName)) {
-            alert(newName + ' is already added to phonebook')
+
+            if (window.confirm(newName + ' is already added to phonebok, replace the old number with a new one?')) {
+                const personToUpdate = persons.find(person => person.name.toLowerCase() === newName.toLowerCase())
+                const updatedPerson = {
+                    name: personToUpdate.name,
+                    number: newNumber,
+                    id: personToUpdate.id
+                }
+                personService.update(updatedPerson.id, updatedPerson).then(person => {
+                    let newPersonsArray = persons.map(p => p.id === person.id ? person : p)
+                    setPersons(newPersonsArray)
+                    setNewName('')
+                    setNewNumber('')
+                })
+            }
+
+        } else {
+            personService.create(newPerson).then(person => {
+                let newPersonsArray = persons.concat(person)
+                setPersons(newPersonsArray)
+                setNewName('')
+                setNewNumber('')
+            })
+
         }
 
-        let newPersonsArray = persons.concat(newPerson)
-        setPersons(newPersonsArray)
-        setNewName('')
-        setNewNumber('')
         console.log('button clicked', event.target)
     }
 
@@ -58,6 +77,20 @@ const App = () => {
         setNewFilter(event.target.value)
     }
 
+    const deletePerson = (id) => {
+        const personToDelete = persons.find(person => person.id === id)
+
+        if (window.confirm('Delete ' + personToDelete.name)) {
+            personService.deletePerson(id).then(() => {
+                let newPersonsArray = persons.filter(person => {
+                    return person.id !== id
+                })
+                setPersons(newPersonsArray)
+            })
+        }
+
+    }
+
     const personsToShow = newFilter === '' ? persons : persons.filter(person => person.name.toLowerCase().includes(newFilter.toLowerCase()))
 
     return (
@@ -69,7 +102,7 @@ const App = () => {
                         newNumber={newNumber} handleNumberChange={handleNumberChange}/>
 
             <h2>Numbers</h2>
-            <Persons personsToShow={personsToShow}/>
+            <Persons personsToShow={personsToShow} deletePerson={deletePerson}/>
         </div>
     )
 }
