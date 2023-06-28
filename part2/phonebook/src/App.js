@@ -3,6 +3,7 @@ import Filter from "./components/Filter";
 import PersonForm from "./components/PersonForm";
 import Persons from "./components/Persons";
 import personService from "./services/personService";
+import Notification from "./components/Notification";
 
 const App = () => {
     const [persons, setPersons] = useState([])
@@ -10,6 +11,7 @@ const App = () => {
     const [newName, setNewName] = useState('')
     const [newNumber, setNewNumber] = useState('')
     const [newFilter, setNewFilter] = useState('')
+    const [newNotification, setNewNotification] = useState(null)
 
     const hook = () => {
         personService.getAll().then(persons => {
@@ -36,7 +38,7 @@ const App = () => {
 
         if (checkIfNameExists(newName)) {
 
-            if (window.confirm(newName + ' is already added to phonebok, replace the old number with a new one?')) {
+            if (window.confirm(newName + ' is already added to phonebook, replace the old number with a new one?')) {
                 const personToUpdate = persons.find(person => person.name.toLowerCase() === newName.toLowerCase())
                 const updatedPerson = {
                     name: personToUpdate.name,
@@ -46,8 +48,27 @@ const App = () => {
                 personService.update(updatedPerson.id, updatedPerson).then(person => {
                     let newPersonsArray = persons.map(p => p.id === person.id ? person : p)
                     setPersons(newPersonsArray)
+                    setNewNotification({
+                        message: 'Number of ' + updatedPerson.name + ' changed to ' + updatedPerson.number,
+                        notificationType: 'notification'
+                    })
+                    setTimeout(() => {
+                        setNewNotification(null)
+                    }, 3000)
                     setNewName('')
                     setNewNumber('')
+                }).catch(error => {
+                    console.log(error)
+                    setPersons(persons.filter(person => {
+                        return person.id !== personToUpdate.id
+                    }))
+                    setNewNotification({
+                        message: 'Information of ' + newName + ' has already been removed from server',
+                        notificationType: 'error'
+                    })
+                    setTimeout(() => {
+                        setNewNotification(null)
+                    }, 3000)
                 })
             }
 
@@ -55,6 +76,13 @@ const App = () => {
             personService.create(newPerson).then(person => {
                 let newPersonsArray = persons.concat(person)
                 setPersons(newPersonsArray)
+                setNewNotification({
+                    message: 'Added ' + newPerson.name,
+                    notificationType: 'notification'
+                })
+                setTimeout(() => {
+                    setNewNotification(null)
+                }, 3000)
                 setNewName('')
                 setNewNumber('')
             })
@@ -86,6 +114,18 @@ const App = () => {
                     return person.id !== id
                 })
                 setPersons(newPersonsArray)
+            }).catch(error => {
+                console.log(error)
+                setPersons(persons.filter(person => {
+                    return person.id !== id
+                }))
+                setNewNotification({
+                    message: 'Information of ' + personToDelete.name + ' has already been removed from server',
+                    notificationType: 'error'
+                })
+                setTimeout(() => {
+                    setNewNotification(null)
+                }, 3000)
             })
         }
 
@@ -96,6 +136,7 @@ const App = () => {
     return (
         <div>
             <h2>Phonebook</h2>
+            <Notification newNotification={newNotification}/>
             <Filter newFilter={newFilter} handleFilterChange={handleFilterChange}/>
             <h3>Add a new</h3>
             <PersonForm addPerson={addPerson} newName={newName} handleNameChange={handleNameChange}
