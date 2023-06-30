@@ -85,6 +85,16 @@ const App = () => {
                 }, 3000)
                 setNewName('')
                 setNewNumber('')
+            }).catch(error => {
+                // this is the way to access the error message
+                console.log(error.response.data.error)
+                setNewNotification({
+                    message: error.response.data.error,
+                    notificationType: 'error'
+                })
+                setTimeout(() => {
+                    setNewNotification(null)
+                }, 3000)
             })
 
         }
