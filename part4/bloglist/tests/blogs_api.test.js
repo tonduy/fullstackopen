@@ -6,11 +6,35 @@ const api = supertest(app)
 
 const Blog = require('../models/blog')
 const helper = require('./test_helper')
+const User = require('../models/user')
+const bcrypt = require('bcrypt')
 
 
 beforeEach(async () => {
+  await User.deleteMany({})
   await Blog.deleteMany({})
-  await Blog.insertMany(helper.initialBlogs)
+
+
+  const saltRounds = 10
+  const passwordHash = await bcrypt.hash('test', saltRounds)
+  const user = new User({
+    username: 'testUser',
+    name: 'John Doe',
+    passwordHash
+  })
+
+  const savedUser = await user.save()
+
+  const initialBlogsWithUser = helper.initialBlogs.map(blog => new Blog({
+    title: blog.title,
+    url: blog.url,
+    author: blog.author,
+    likes: blog.likes,
+    user: savedUser._id
+  }))
+
+  await Blog.insertMany(initialBlogsWithUser)
+
 })
 
 describe('Part 4.8 blog list tests', () => {
@@ -38,10 +62,27 @@ describe('Part 4.9 blog list tests', () => {
 })
 
 describe('Part 4.10 blog list tests', () => {
+  let headers
+
+  beforeEach(async () => {
+    const user = {
+      username: 'testUser',
+      password: 'test',
+    }
+
+    const loginUser = await api
+      .post('/api/login')
+      .send(user)
+
+    headers = {
+      'Authorization': 'Bearer ' + loginUser.body.token
+    }
+  })
+
   test('4.10 blog list tests, verify blog can be added ', async () => {
     const newBlog = {
       _id: '7a424bc61b54a676234d17fc',
-      title: 'Type wars',
+      title: 'Test Blog123',
       author: 'Robert C. Martin',
       url: 'http://blog.cleancoder.com/uncle-bob/2016/05/01/TypeWars.html',
       likes: 2,
@@ -52,24 +93,42 @@ describe('Part 4.10 blog list tests', () => {
       .post('/api/blogs')
       .send(newBlog)
       .expect(201)
+      .set(headers)
       .expect('Content-Type', /application\/json/)
 
     const blogsInDb = await helper.blogsInDb()
     expect(blogsInDb).toHaveLength(helper.initialBlogs.length + 1)
 
-    const getNewBlogIds = blogsInDb.map(blog => blog.id)
+    const getNewBlogIds = blogsInDb.map(blog => blog.title)
 
     expect(getNewBlogIds).toContain(
-      '7a424bc61b54a676234d17fc'
+      'Test Blog123'
     )
   })
 })
 
 describe('Part 4.11 blog list tests', () =>  {
+  let headers
+
+  beforeEach(async () => {
+    const user = {
+      username: 'testUser',
+      password: 'test',
+    }
+
+    const loginUser = await api
+      .post('/api/login')
+      .send(user)
+
+    headers = {
+      'Authorization': 'Bearer ' + loginUser.body.token
+    }
+  })
+
   test('4.11 blog list tests, verify likes are 0 if undefined ', async () => {
     const newBlog = {
       _id: '8a424bc61b54a676234d17fc',
-      title: 'Type wars',
+      title: 'TestLikeBlog',
       author: 'Robert C. Martin',
       url: 'http://blog.cleancoder.com/uncle-bob/2016/05/01/TypeWars.html',
       __v: 0
@@ -79,12 +138,13 @@ describe('Part 4.11 blog list tests', () =>  {
       .post('/api/blogs')
       .send(newBlog)
       .expect(201)
+      .set(headers)
       .expect('Content-Type', /application\/json/)
 
     const blogsInDb = await helper.blogsInDb()
     expect(blogsInDb).toHaveLength(helper.initialBlogs.length + 1)
 
-    const getNewBlogIds = blogsInDb.filter(blog => blog.id === newBlog._id)
+    const getNewBlogIds = blogsInDb.filter(blog => blog.title === newBlog.title)
 
     expect(getNewBlogIds[0].likes).toBe(
       0
@@ -93,6 +153,23 @@ describe('Part 4.11 blog list tests', () =>  {
 })
 
 describe('Part 4.12 blog list tests', () =>  {
+  let headers
+
+  beforeEach(async () => {
+    const user = {
+      username: 'testUser',
+      password: 'test',
+    }
+
+    const loginUser = await api
+      .post('/api/login')
+      .send(user)
+
+    headers = {
+      'Authorization': 'Bearer ' + loginUser.body.token
+    }
+  })
+
   test('4.12 blog list tests, verify 400 error if title is missing ', async () => {
     const newBlog = {
       _id: '8a424bc51b54a676234d17fc',
@@ -105,6 +182,7 @@ describe('Part 4.12 blog list tests', () =>  {
       .post('/api/blogs')
       .send(newBlog)
       .expect(400)
+      .set(headers)
   })
 
   test('4.12 blog list tests, verify 400 error if url is missing ', async () => {
@@ -119,6 +197,7 @@ describe('Part 4.12 blog list tests', () =>  {
       .post('/api/blogs')
       .send(newBlog)
       .expect(400)
+      .set(headers)
   })
 
   test('4.12 blog list tests, verify 400 error if title and url are missing ', async () => {
@@ -132,10 +211,28 @@ describe('Part 4.12 blog list tests', () =>  {
       .post('/api/blogs')
       .send(newBlog)
       .expect(400)
+      .set(headers)
   })
 })
 
 describe('Part 4.13 blog list tests', () =>  {
+  let headers
+
+  beforeEach(async () => {
+    const user = {
+      username: 'testUser',
+      password: 'test',
+    }
+
+    const loginUser = await api
+      .post('/api/login')
+      .send(user)
+
+    headers = {
+      'Authorization': 'Bearer ' + loginUser.body.token
+    }
+  })
+
   test('4.13 blog list tests, a blog can be deleted ', async () => {
     const blogsInDb = await helper.blogsInDb()
     const blogToDeleteId = blogsInDb[0].id
@@ -143,6 +240,7 @@ describe('Part 4.13 blog list tests', () =>  {
     await api
       .delete('/api/blogs/' + blogToDeleteId)
       .expect(204)
+      .set(headers)
 
     const blogsInDbAfterDeletion = await helper.blogsInDb()
 
@@ -161,10 +259,12 @@ describe('Part 4.13 blog list tests', () =>  {
     await api
       .delete('/api/blogs/' + blogToDeleteId1)
       .expect(204)
+      .set(headers)
 
     await api
       .delete('/api/blogs/' + blogToDeleteId2)
       .expect(204)
+      .set(headers)
 
     const blogsInDbAfterDeletion = await helper.blogsInDb()
 
@@ -180,6 +280,23 @@ describe('Part 4.13 blog list tests', () =>  {
 
 
 describe('Part 4.14 blog list tests', () =>  {
+  let headers
+
+  beforeEach(async () => {
+    const user = {
+      username: 'testUser',
+      password: 'test',
+    }
+
+    const loginUser = await api
+      .post('/api/login')
+      .send(user)
+
+    headers = {
+      'Authorization': 'Bearer ' + loginUser.body.token
+    }
+  })
+
   test('4.14 blog list tests, likes of a blog can be updated ', async () => {
     const blogsInDb = await helper.blogsInDb()
     const blogToUpdateId = blogsInDb[0].id
@@ -192,6 +309,7 @@ describe('Part 4.14 blog list tests', () =>  {
       .put('/api/blogs/' + blogToUpdateId)
       .send(updatedBlog)
       .expect(200)
+      .set(headers)
 
     const blogsInDbAfterUpdate = await helper.blogsInDb()
 
@@ -213,6 +331,7 @@ describe('Part 4.14 blog list tests', () =>  {
       .put('/api/blogs/' + blogToUpdateId)
       .send(updatedBlog)
       .expect(200)
+      .set(headers)
 
     const blogsInDbAfterUpdate = await helper.blogsInDb()
 
@@ -222,6 +341,26 @@ describe('Part 4.14 blog list tests', () =>  {
     expect(checkBlogIsUpdated[0].title).toBe('New Blog')
   })
 
+})
+
+describe('Part 4.10 blog list tests', () => {
+  test('4.23 blog list tests, 401 Unauthorized if a token is not provided ', async () => {
+    const newBlog = {
+      _id: '7a424bc61b54a676234d17fc',
+      title: 'Test Blog123',
+      author: 'Robert C. Martin',
+      url: 'http://blog.cleancoder.com/uncle-bob/2016/05/01/TypeWars.html',
+      likes: 2,
+      __v: 0
+    }
+
+    await api
+      .post('/api/blogs')
+      .send(newBlog)
+      .expect(401)
+      .expect('Content-Type', /application\/json/)
+
+  })
 })
 
 afterAll(async () => {
