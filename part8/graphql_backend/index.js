@@ -203,7 +203,7 @@ const resolvers = {
 
             return authors.map(author => {
                 let count = Book.collection.countDocuments({author: author._id})
-                return {name: author.name, born: author.born, bookCount: count}
+                return {name: author.name, born: author.born, bookCount: count, id: author._id}
             })
 
         },
@@ -261,9 +261,10 @@ const resolvers = {
                 })
             }
 
-            try {
+
                 const author = await Author.findOne({name: args.name})
                 author.born = args.setBornTo
+            try {
                 author.save()
             } catch (error) {
                 throw new GraphQLError('Saving author failed', {
