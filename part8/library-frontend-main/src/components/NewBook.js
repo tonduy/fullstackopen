@@ -26,7 +26,10 @@ const NewBook = ({show, setError}) => {
 
     console.log('add book...')
     const publishedInt = parseInt(published)
-    createBook({variables: {title, published: publishedInt, author, genres}})
+    await createBook({
+      variables: { title, published: publishedInt, author, genres },
+      refetchQueries: [{ query: ALL_BOOKS }]
+    })
 
     setTitle('')
     setPublished('')
