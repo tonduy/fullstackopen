@@ -22,4 +22,15 @@ router.post("/", (req, res) => {
     }
 });
 
+router.get('/:id', (req, res) => {
+    const id = req.params.id;
+    const patient = patientService.getNonSensitivePatient(id);
+
+    if (patient) {
+        res.json(patient);
+    } else {
+        res.status(404).json({ error: 'Patient not found' });
+    }
+});
+
 export default router;
